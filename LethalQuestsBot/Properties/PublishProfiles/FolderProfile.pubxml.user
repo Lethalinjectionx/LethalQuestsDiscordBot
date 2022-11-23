@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+https://go.microsoft.com/fwlink/?LinkID=208121. 
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <_PublishTargetUrl>C:\ARKPlugins\LethalQuestsBot\WebApplication1\bin\Release\netcoreapp3.1\publish\</_PublishTargetUrl>
+    <History>True|2022-04-08T03:06:37.4733901Z;True|2022-04-02T09:21:08.0131129-04:00;True|2022-04-02T09:20:04.4946988-04:00;True|2022-04-02T08:52:35.4653371-04:00;True|2022-04-02T08:48:03.9147952-04:00;True|2022-01-08T19:18:44.7869247-05:00;True|2022-01-08T19:07:07.1048594-05:00;True|2021-12-09T16:48:23.1347996-05:00;True|2021-12-09T16:47:58.2147078-05:00;True|2021-12-09T16:29:51.2554549-05:00;True|2021-12-09T16:25:16.1362803-05:00;True|2021-12-05T17:35:44.5226374-05:00;True|2021-12-05T17:27:32.0101608-05:00;True|2021-12-03T20:38:55.9315759-05:00;True|2021-12-03T20:37:16.2576163-05:00;</History>
+  </PropertyGroup>
+</Project>
