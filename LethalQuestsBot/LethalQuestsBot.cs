@@ -35,7 +35,8 @@ namespace DSPlus.LethalQuestsBot
                 TokenType = TokenType.Bot,
                 Intents = DiscordIntents.All,
                 AutoReconnect = true,
-                MinimumLogLevel = LogLevel.Information
+                MinimumLogLevel = LogLevel.Information,
+                LogUnknownEvents = false
             };
 
             // then we want to instantiate our client
