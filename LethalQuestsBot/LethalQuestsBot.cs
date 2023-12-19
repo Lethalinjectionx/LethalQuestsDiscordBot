@@ -10,6 +10,8 @@ using DSharpPlus.Interactivity.Enums;
 using DSharpPlus.Interactivity.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using DSharpPlus.SlashCommands;
+using DSharpPlus.SlashCommands.EventArgs;
 
 namespace DSPlus.LethalQuestsBot
 {
@@ -18,6 +20,7 @@ namespace DSPlus.LethalQuestsBot
         public DiscordClient Client { get; set; }
         public InteractivityExtension Interactivity { get; set; }
         public CommandsNextExtension Commands { get; set; }
+        public SlashCommandsExtension SlashCommands { get; set; }
         public readonly EventId BotEventId = new EventId(42, "LethalQuestBot");
         public readonly IConfiguration _configuration;
         public readonly string _prefix;
@@ -58,38 +61,21 @@ namespace DSPlus.LethalQuestsBot
                 Timeout = TimeSpan.FromMinutes(2)
             });
 
-            // up next, let's set up our commands
-            var ccfg = new CommandsNextConfiguration
+            var scfg = new SlashCommandsConfiguration
             {
-                // let's use the string prefix defined in config.json
-                StringPrefixes = new[] { _prefix },
-
-                // enable responding in direct messages
-                EnableDms = true,
-
-                // enable mentioning the bot as a command prefix
-                EnableMentionPrefix = true,
-
-                //add services
-                Services = services,
-                UseDefaultCommandHandler = !_allowOtherBots
+                Services = services
             };
 
-            // and hook them up
-            this.Commands = this.Client.UseCommandsNext(ccfg);
+            this.SlashCommands = this.Client.UseSlashCommands(scfg);
 
             // let's hook some command events, so we know what's
             // going on
 
-            if (_allowOtherBots)
-                this.Client.MessageCreated += this.HandleCommands;
-            this.Commands.CommandExecuted += this.Commands_CommandExecuted;
-            this.Commands.CommandErrored += this.Commands_CommandErrored;
+            this.SlashCommands.SlashCommandExecuted += this.SlashCommands_SlashCommandExecuted;
+            this.SlashCommands.SlashCommandErrored += this.SlashCommands_SlashCommandErrored;
 
             // up next, let's register our commands
-            this.Commands.RegisterCommands<TopCommand>();
-            this.Commands.RegisterCommands<RegisterCommand>();
-            this.Commands.RegisterCommands<MyStatsCommand>();
+            this.SlashCommands.RegisterCommands<BotCommands>();
 
             // finally, let's connect and log in
             this.Client.ConnectAsync();
@@ -133,21 +119,22 @@ namespace DSPlus.LethalQuestsBot
             return Task.CompletedTask;
         }
 
-        private Task Commands_CommandExecuted(CommandsNextExtension sender, CommandExecutionEventArgs e)
+        private Task SlashCommands_SlashCommandExecuted(SlashCommandsExtension sender, SlashCommandExecutedEventArgs e)
         {
             // let's log the name of the command and user
-            e.Context.Client.Logger.LogInformation(BotEventId, $"{e.Context.User.Username} successfully executed '{e.Command.QualifiedName}'");
+            e.Context.Client.Logger.LogInformation(BotEventId, $"{e.Context.User.Username} successfully executed '{e.Context.QualifiedName}'");
 
             // since this method is not async, let's return
             // a completed task, so that no additional work
             // is done
             return Task.CompletedTask;
         }
-
-        private async Task Commands_CommandErrored(CommandsNextExtension sender, CommandErrorEventArgs e)
+        
+        private async Task SlashCommands_SlashCommandErrored(SlashCommandsExtension sender, SlashCommandErrorEventArgs e)
         {
             // let's log the error details
-            e.Context.Client.Logger.LogError(BotEventId, $"{e.Context.User.Username} tried executing '{e.Command?.QualifiedName ?? "<unknown command>"}' but it errored: {e.Exception.GetType()}: {e.Exception.Message ?? "<no message>"}", DateTime.Now);
+            string fullCommand = e.Context.CommandName;
+            e.Context.Client.Logger.LogError(BotEventId, $"{e.Context.User.Username} tried executing '{fullCommand}' but it errored: {e.Exception.GetType()}: {e.Exception.Message ?? "<no message>"}", DateTime.Now);
 
             // let's check if the error is a result of lack
             // of required permissions
@@ -165,28 +152,34 @@ namespace DSPlus.LethalQuestsBot
                     Description = $"{emoji} You do not have the permissions required to execute this command.",
                     Color = new DiscordColor(0xFF0000) // red
                 };
-                await e.Context.RespondAsync("", embed: embed);
+                await e.Context.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embed).AsEphemeral());
             }
-        }
+            else
+            {
+                var emoji = DiscordEmoji.FromName(e.Context.Client, ":no_entry:");
+                string title;
+                string message = "";
 
-        private Task HandleCommands(DiscordClient sender, MessageCreateEventArgs e)
-        {
-            var cnext = sender.GetCommandsNext();
-            var msg = e.Message;
+                if (fullCommand.StartsWith("!"))
+                {
+                    title = "Use Slash Commands";
+                    message = $"{emoji} Only slash commands are available now!\nPlease see <#819551634103336990> for more information!";
+                }
+                else
+                {
+                    title = "Invalid Command";
+                    message = $"{emoji} It appears you used an invalid command or must be used in a direct message only!";
+                }
 
-            var cmdStart = msg.GetStringPrefixLength(_prefix);
-            if (cmdStart == -1) return Task.CompletedTask;
-
-            var prefix = msg.Content.Substring(0, cmdStart);
-            var cmdString = msg.Content.Substring(cmdStart);
-
-            var command = cnext.FindCommand(cmdString, out var args);
-            if (command == null) return Task.CompletedTask;
-
-            var ctx = cnext.CreateContext(msg, prefix, command, args);
-            Task.Run(async () => await cnext.ExecuteCommandAsync(ctx));
-
-            return Task.CompletedTask;
+                // let's wrap the response into an embed
+                var embed = new DiscordEmbedBuilder
+                {
+                    Title = title,
+                    Description = message,
+                    Color = new DiscordColor(0xFF0000) // red
+                };
+                await e.Context.Interaction.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().AddEmbed(embed).AsEphemeral());
+            }
         }
     }
 }
